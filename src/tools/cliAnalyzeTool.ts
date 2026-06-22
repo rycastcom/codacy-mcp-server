@@ -22,13 +22,18 @@ const rules = `
   ${generalRepositoryMistakes}
 `;
 
+const optionalRepositorySchema = JSON.parse(JSON.stringify(repositorySchema));
+optionalRepositorySchema.provider.description = `Optional. ${repositorySchema.provider.description}`;
+optionalRepositorySchema.organization.description = `Optional. ${repositorySchema.organization.description}`;
+optionalRepositorySchema.repository.description = `Optional. ${repositorySchema.repository.description}`;
+
 export const cliAnalyzeTool: CodacyTool = {
   name: toolNames.CODACY_CLI_ANALYZE,
   description: `Run quality analysis locally using Codacy CLI. \n ${rules}`,
   inputSchema: {
     type: 'object',
     properties: {
-      ...repositorySchema,
+      ...optionalRepositorySchema,
       rootPath: {
         type: 'string',
         description:
@@ -46,6 +51,6 @@ export const cliAnalyzeTool: CodacyTool = {
         default: '',
       },
     },
-    required: ['provider', 'organization', 'repository', 'rootPath'],
+    required: ['rootPath'],
   },
 };

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "@codacy/codacy-mcp",
+  "description": "Codacy MCP server",
+  "status": "active",
+  "repository": {
+    "url": "https://github.com/codacy/codacy-mcp-server",
+    "source": "github"
+  },
+  "version": "0.0.1",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "registry_base_url": "https://registry.npmjs.org",
+      "identifier": "@codacy/codacy-mcp",
+      "version": "0.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environment_variables": [
+        {
+          "description": "Codacy Account Token",
+          "required": false,
+          "format": "string",
+          "is_secret": true,
+          "name": "CODACY_ACCOUNT_TOKEN"
+        }
+      ]
+    }
+  ]
+}

@@ -62,9 +62,16 @@ coverage/
 tmp/
 temp/
 
+# MCP Registry
+.mcpregistry_registry_token
+.mcpregistry_github_token
+
 #Ignore vscode AI rules
 .github/copilot-instructions.md
 
 
 #Ignore cursor AI rules
 .cursor/rules/codacy.mdc
+
+# MacOS store files
+.DS_Store

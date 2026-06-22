@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import {
   CallToolRequestSchema,
@@ -10,7 +9,11 @@ import { OpenAPI } from './src/api/client/index.js';
 import * as Tools from './src/tools/index.js';
 import type { ToolKeys } from './src/schemas.js';
 import * as Handlers from './src/handlers/index.js';
-import { validateOrganization } from './src/middleware/validation.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { applyProxyConfig } from './src/proxy.js';
+
+// Apply proxy / SSL configuration before any outbound requests are made.
+applyProxyConfig();
 
 // Check for API key
 const CODACY_ACCOUNT_TOKEN = process.env.CODACY_ACCOUNT_TOKEN;
@@ -21,7 +24,7 @@ OpenAPI.HEADERS = {
   'X-Codacy-Origin': 'mcp-server',
 };
 
-const server = new Server(
+const mcpServer = new McpServer(
   {
     name: 'codacy-mcp-server',
     version: '0.1.0',
@@ -30,33 +33,6 @@ const server = new Server(
     capabilities: {
       tools: {},
       resources: {},
-      triggers: {
-        patterns: [
-          'codacy',
-          'code quality',
-          'code analysis',
-          'security vulnerabilities',
-          'repository issues',
-          'pull request analysis',
-          'code coverage',
-          'issues',
-          'security',
-          'srm',
-          'analysis',
-          'tool',
-          'pattern',
-          'pull request',
-          'repository',
-          'file',
-          'coverage',
-          'git',
-          'diff',
-          'branch',
-          'commit',
-          'severity',
-          'organization',
-        ],
-      },
     },
   }
 );
@@ -159,6 +135,11 @@ const toolDefinitions: { [key in ToolKeys]: ToolDefinition } = {
     handler: Handlers.cliAnalyzeHandler,
     noAuth: true,
   },
+  codacy_cli_install: {
+    tool: Tools.cliInstallTool,
+    handler: Handlers.cliInstallHandler,
+    noAuth: true,
+  },
   codacy_setup_repository: {
     tool: Tools.setupRepositoryTool,
     handler: Handlers.setupRepositoryHandler,
@@ -166,14 +147,14 @@ const toolDefinitions: { [key in ToolKeys]: ToolDefinition } = {
 };
 
 // Register tools
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+mcpServer.server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: Object.values(toolDefinitions)
     .filter(({ noAuth }) => CODACY_ACCOUNT_TOKEN || noAuth)
     .map(({ tool }) => tool),
 }));
 
 // Register request handlers
-server.setRequestHandler(CallToolRequestSchema, async request => {
+mcpServer.server.setRequestHandler(CallToolRequestSchema, async request => {
   try {
     if (!request.params.arguments) {
       throw new Error('Arguments are required');
@@ -182,10 +163,13 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
     const toolDefinition = toolDefinitions[request.params.name as ToolKeys];
     if (!toolDefinition) throw new Error(`Unknown tool: ${request.params.name}`);
 
-    // Validate organization if the tool requires it
-    if (request.params.arguments.organization) {
-      request.params.arguments = validateOrganization(request.params.arguments);
-    }
+    // Validate required arguments
+    const requiredArguments = (toolDefinition.tool.inputSchema.required || []) as string[];
+    requiredArguments.forEach(required => {
+      if (!request.params.arguments?.[required]) {
+        throw new Error(`Argument ${required} is required`);
+      }
+    });
 
     const result = await toolDefinition.handler(request.params.arguments);
     return {
@@ -199,7 +183,7 @@ server.setRequestHandler(CallToolRequestSchema, async request => {
 
 async function runServer() {
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await mcpServer.connect(transport);
   console.error('Codacy MCP Server running on stdio');
 }
 

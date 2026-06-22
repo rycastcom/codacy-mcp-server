@@ -20,3 +20,4 @@ export * from './listOrganizationsTool.js';
 export * from './cliAnalyzeTool.js';
 export * from './getFileClonesTool.js';
 export * from './setupRepositoryTool.js';
+export * from './cliInstallTool.js';
