@@ -22,6 +22,7 @@ export const toolNames = {
   CODACY_GET_ISSUE: 'codacy_get_issue',
   CODACY_GET_PATTERN: 'codacy_get_pattern',
   CODACY_CLI_ANALYZE: 'codacy_cli_analyze',
+  CODACY_CLI_INSTALL: 'codacy_cli_install',
   CODACY_GET_FILE_CLONES: 'codacy_get_file_clones',
   CODACY_SETUP_REPOSITORY: 'codacy_setup_repository',
 } as const;

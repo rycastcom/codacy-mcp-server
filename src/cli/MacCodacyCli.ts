@@ -18,26 +18,13 @@ export class MacCodacyCli extends CodacyCli {
 
     if (fs.existsSync(fullPath)) {
       this.setCliCommand(
-        this._cliVersion ? `CODACY_CLI_VERSION=${this._cliVersion} ${localPath}` : localPath
+        this._cliVersion ? `CODACY_CLI_V2_VERSION=${this._cliVersion} ${localPath}` : localPath
       );
       return;
     }
 
-    // check if codacy-cli is installed globally
-    try {
-      // first set the command for the getCliCommand to do the right thing when called
-      this.setCliCommand(
-        this._cliVersion ? `CODACY_CLI_VERSION=${this._cliVersion} codacy-cli` : 'codacy-cli'
-      );
-      await this.execAsync(`${this.getCliCommand()} --help`);
-
-      return;
-    } catch {
-      // CLI not found, clear it, and attempt to install it
-      this.setCliCommand('');
-      await this.install();
-      return undefined;
-    }
+    // CLI not found, throw error
+    throw new Error(`Codacy CLI not found. Please install it first.`);
   }
 
   private async preflightCodacyCli(): Promise<void> {
@@ -70,7 +57,7 @@ export class MacCodacyCli extends CodacyCli {
 
         this.setCliCommand(
           this._cliVersion
-            ? `CODACY_CLI_VERSION=${this._cliVersion} ${codacyCliPath}`
+            ? `CODACY_CLI_V2_VERSION=${this._cliVersion} ${codacyCliPath}`
             : codacyCliPath
         );
       }
@@ -105,11 +92,16 @@ export class MacCodacyCli extends CodacyCli {
   public async initialize(): Promise<void> {
     // Check if the configuration files exist
     const configFilePath = path.join(this.rootPath, CODACY_FOLDER_NAME, 'codacy.yaml');
+    const cliConfigFilePath = path.join(this.rootPath, CODACY_FOLDER_NAME, 'cli-config.yaml');
     const toolsFolderPath = path.join(this.rootPath, CODACY_FOLDER_NAME, 'tools-configs');
 
-    let needsInitialization = !fs.existsSync(configFilePath) || !fs.existsSync(toolsFolderPath);
+    const initFilesOk =
+      fs.existsSync(configFilePath) &&
+      fs.existsSync(cliConfigFilePath) &&
+      fs.existsSync(toolsFolderPath);
+    let needsInitialization = !initFilesOk;
 
-    if (!needsInitialization) {
+    if (initFilesOk) {
       // Check if the mode matches the current properties
       const cliConfig = fs.readFileSync(
         path.join(this.rootPath, CODACY_FOLDER_NAME, 'cli-config.yaml'),
@@ -125,24 +117,20 @@ export class MacCodacyCli extends CodacyCli {
     }
 
     if (needsInitialization) {
-      const apiToken: Record<string, string> = this._accountToken
-        ? { 'api-token': this._accountToken }
-        : {};
-
-      // Repository params are required for the "api-token" flag to work; it only works all together
-      const repositoryAccess: Record<string, string> =
-        this.repository && this.provider && this.organization
+      const initParams = (
+        this._accountToken && this.repository && this.provider && this.organization
           ? {
               provider: this.provider,
               organization: this.organization,
               repository: this.repository,
-              ...apiToken,
+              'api-token': this._accountToken,
             }
-          : {};
+          : {}
+      ) as Record<string, string>;
 
       try {
         // initialize codacy-cli
-        await this.execAsync(`${this.getCliCommand()} init`, { ...repositoryAccess });
+        await this.execAsync(`${this.getCliCommand()} init`, initParams);
       } catch (error) {
         throw new Error(`Failed to initialize CLI: ${error}`);
       }

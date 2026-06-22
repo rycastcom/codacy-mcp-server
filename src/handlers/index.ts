@@ -7,3 +7,4 @@ export * from './tools.js';
 export * from './account.js';
 export * from './cliAnalyze.js';
 export * from './setupRepository.js';
+export * from './cliInstall.js';
